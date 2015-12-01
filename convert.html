@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+	<head>
+		<title>Перенос/обновление товаров</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script language="JavaScript" src="jquery-2.1.1.min.js" type="text/javascript"></script>
+		<link rel="stylesheet" href="bootstrap.css" type="text/css"/>
+	</head>
+	<body>
+		Товаров за раз:<input type="text" name="count" value="10"><br>
+		<button id="start">Старт</button>
+		<h3 id="status"></h1>
+		<label id="status-detail"></label>
+		<table class="table" width="500px">
+			<thead>
+				<tr>
+					<th>Итерация</th>
+					<th>статус</th>
+					<th>Время, сек</th>
+				</tr>
+			</thead>
+			<tbody id="info"></tbody>
+		</table>
+		<button id="relates">Создать связи между товарами</button>
+		<script type="text/javascript">
+			$(document).ready(function () {
+				function timeToSec(t_start, t_end) {
+					var t = (t_end - t_start) / 1000;
+					return t.toFixed(2);
+				}
+				var iteration = 0;
+
+				function go(count, callback) {
+					var t_start = (new Date()).getTime();
+					iteration++;
+					$('#status-detail').html("  запущено в: " + (new Date()).toLocaleTimeString());
+					$.get("convertToOpenCart.php?count=" + count, function (data) {
+						if (data.indexOf("{{TRUE}}") != -1) {
+							go(count, callback);
+						} else {
+							if (callback) {
+								callback();
+							}
+						}
+					}).done(function (data) {
+						var t_end = (new Date()).getTime();
+						$('#info').prepend("<tr><td>" + iteration + "</td><td>успех</td><td>" + timeToSec(t_start, t_end) + "</td></tr>");
+					}).fail(function (data) {
+						var t_end = (new Date()).getTime();
+						$('#info').prepend("<tr><td>" + iteration + "</td><td>успех</td><td>" + timeToSec(t_start, t_end) + "</td></tr>");
+
+					})
+				}
+
+				$("#start").on('click', function () {
+					iteration = 0;
+					$(this).hide();
+					$('#info').html('');
+					var count = parseInt($("input[name='count']").val());
+					go(count, function () {
+						$("#start").show();
+					})
+
+				});
+
+				$("#relates").on('click', function () {
+					$('#status-detail').html("  запущено в: " + (new Date()).toLocaleTimeString());
+					$(this).hide();
+					$.get("convertToOpenCart.php?relates=", function (data) {
+						$("#relates").show();
+					}).done(function (data) {
+						$('#status-detail').html(data);
+					}).fail(function (data) {
+						$('#status-detail').html(data);
+					})
+				});
+
+			});
+		</script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+	<head>
+		<title>Parser Ikea ru/ru</title>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script language="JavaScript" src="jquery-2.1.1.min.js" type="text/javascript"></script>
+		<link rel="stylesheet" href="bootstrap.css" type="text/css"/>
+	</head>
+	<body>
+		Цена Начало:<input type="text" name="min" value="1"><br><!-- price min-->
+		Цена Конец:<input type="text" name="max" value="1000"><br><!-- price max-->
+		Цена Шаг:<input type="text" name="step" value="201"><br><!-- price step-->
+		<button id="start">Старт</button>
+		<h3 id="status"></h1>
+		<label id="status-detail"></label>
+		<table class="table" width="500px">
+			<thead>
+				<tr>
+					<th>#</th>
+					<th>от</th>
+					<th>до</th>
+					<th>кол-во товаров</th><!-- count product-->
+					<th>статус</th><!-- status-->
+					<th>Время, сек</th><!-- time, sec-->
+				</tr>
+			</thead>
+			<tbody id="info"></tbody>
+		</table>
+		<hr>
+		<a href="convert.html" target="_blank">конвертор</a>
+		<hr>
+		Загрузить определенный товар(URL):<br><textarea rows="10" cols="45" name="urls" placeholder="/ru/ru/catalog/products/S19055498"></textarea><br>
+		<label id='result'></label>
+		<button id="manual">Вручную</button>
+		<script type="text/javascript">
+			$(document).ready(function () {
+				var stat = {
+					min: 1,
+					max: 100,
+					step: 99,
+					cur: {
+						i: 0,
+						min: 0,
+						max: 0,
+						valid: true
+					},
+					clear: function () {
+						this.cur = {
+							i: 0,
+							min: 0,
+							max: 0,
+							valid: true
+						};
+					},
+					next: function () {
+
+						this.cur.min = this.min + this.step * this.cur.i;
+						this.cur.max = this.min + this.step * (this.cur.i + 1);
+						if (this.cur.max > this.max) {
+							this.cur.valid = false;
+						}
+						this.cur.i++;
+						return {
+							i: this.cur.i,
+							min: this.cur.min,
+							max: this.cur.max,
+							valid: this.cur.valid
+						};
+					}
+				};
+				function timeToSec(t_start, t_end) {
+					var t = (t_end - t_start) / 1000;
+					return t.toFixed(2);
+				}
+				var getGoods = function (stat) {
+					var cur = stat.next();
+					console.log(cur);
+					$('#status').html('Ждите....');
+					if (!cur.valid) {
+						$('#status').html('Закончено');
+						$('#status-detail').html('');
+						$("#start").show();
+						return;
+					}
+
+					var t_start = (new Date()).getTime();
+					$('#status-detail').html('цена с ' + cur.min + " до " + cur.max + ",  запущено в: " + (new Date()).toLocaleTimeString());
+
+					/*console.log("collect.php?minprice="+cur.min+"&maxprice="+cur.max);
+					 getGoods(stat);
+					 return;*/
+
+					$.get("collect.php?minprice=" + cur.min + "&maxprice=" + cur.max, function (data) {
+					}).done(function (data) {
+						var t_end = (new Date()).getTime();
+						$('#info').prepend("<tr><td>" + cur.i + "</td><td>" + cur.min + "</td><td>" + cur.max + "</td>	<td>" + data + "</td><td>успех</td><td>" + timeToSec(t_start, t_end) + "</td></tr>");
+						getGoods(stat);
+					}).fail(function () {
+						var t_end = (new Date()).getTime();
+						$('#info').prepend("<tr><td>" + cur.i + "</td><td>" + cur.min + "</td><td>" + cur.max + "</td>	<td>-</td><td>ошибка</td><td>" + timeToSec(t_start, t_end) + "</td></tr>");
+						getGoods(stat);
+					});
+				}
+
+				$("#start").on('click', function () {
+					$(this).hide();
+					stat.clear();
+					$('#info').html('');
+					stat.min = parseInt($("input[name='min']").val());
+					stat.max = parseInt($("input[name='max']").val());
+					stat.step = parseInt($("input[name='step']").val());
+					getGoods(stat);
+				});
+
+				$('#manual').on('click', function () {
+					$('#result').html('');
+					$(this).hide();
+					$.get("collect.php?minprice=1&maxprice=20&urls=" + $("textarea[name='urls']").val(), function (data) {
+					}).done(function (data) {
+						$('#result').html(data);
+						$('#manual').show();
+					}).fail(function (data) {
+						$('#manual').show();
+						$('#result').html(data);
+					});
+				});
+			});
+		</script>
+</body>
+</html>
