@@ -50,7 +50,6 @@ class OpenCartConvertor {
 			$imagenamall = $this->downloadImages($d['url'], $d['img'], $path);
 
 			$this->addProduct($d, $imagenamall, $category_ids);
-
 		}
 		var_dump('DB_ERRORS');
 		var_dump($this->db->getErrors());
@@ -80,12 +79,17 @@ class OpenCartConvertor {
 					//обновить товар Update good
 					var_dump('update product ' . $product_id . ' ' . $data['sku'] . ' ' . $data['title']);
 					$this->updateProduct($data, $product_id);
-					$this->updateOptionToProduct($data, $product_id);
+
+					if ($this->isOption($data['sku'])) {
+						$this->updateOptionToProduct($data, $product_id);
+					} else {
+						$this->addNewOptionsToProduct($data, $product_id);
+					}
 				} else {
 					//this is option
 					$sql = "SELECT * FROM `oc_otp_data` WHERE `model`='{$data['sku']}';";
 					$rows = $this->db->query_get_multi_a('main', $sql);
-					if (count($rows) == 0) {
+					if (!$this->isOption($data['sku'])) {
 						//новая опция New OTP Option
 						var_dump('new option ' . $product_id . ' ' . $data['sku'] . ' ' . $data['title']);
 						$this->addNewOptionsToProduct($data, $product_id);
@@ -103,6 +107,20 @@ class OpenCartConvertor {
 				$this->addNewOptionsToProduct($data, $product_id);
 			}
 		}
+	}
+
+	/**
+	 *
+	 * @param string $sku
+	 * @return boolean
+	 */
+	protected function isOption($sku) {
+		$sql = "SELECT * FROM `oc_otp_data` WHERE `model`='{$sku}';";
+		$rows = $this->db->query_get_multi_a('main', $sql);
+		if (count($rows) == 0) {
+			return false;
+		}
+		return true;
 	}
 
 	protected function updateProduct($data, $product_id) {
@@ -323,11 +341,11 @@ class OpenCartConvertor {
 		//добавляем в категорию
 		if (count($category_ids) > 0) {
 			$vals = array();
-			foreach ($category_ids as $category_id){
-				$vals[]="('" . $product_id . "','" . $category_id . "')";
+			foreach ($category_ids as $category_id) {
+				$vals[] = "('" . $product_id . "','" . $category_id . "')";
 			}
 			$sql = "INSERT INTO `oc_product_to_category`(`product_id`, `category_id`) "
-					. "VALUES ".implode(', ',$vals).';';
+					. "VALUES " . implode(', ', $vals) . ';';
 			$this->db->query_execute('main', $sql);
 		}
 
@@ -573,7 +591,7 @@ class OpenCartConvertor {
 			}
 		}
 		//$sql = "SELECT `product_id`, `sku` FROM `oc_product` WHERE sku IN (" . implode(', ', $sku) . ");";
-		$sql="SELECT p.`product_id`, p.`sku`, od.model as sku_sub
+		$sql = "SELECT p.`product_id`, p.`sku`, od.model as sku_sub
 			FROM `oc_product` p
 			LEFT JOIN oc_otp_data od ON od.product_id=p.product_id WHERE sku IN (" . implode(', ', $sku) . ");";
 		$rows = $this->db->query_get_multi_a('main', $sql);
@@ -581,7 +599,7 @@ class OpenCartConvertor {
 		$products = array();
 		foreach ($rows as $row) {
 			$products[$row['sku']] = $row['product_id'];
-			if($row['sku_sub']!=''){
+			if ($row['sku_sub'] != '') {
 				$products[$row['sku_sub']] = $row['product_id'];
 			}
 		}
